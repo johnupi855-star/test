@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Clearance Tracker — UPI</title>
+<style>
+  /* ── original styles (unchanged) ── */
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f4f6f9;color:#222;font-size:13px}
+  .header{background:#1a3a5c;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:12px}
+  .header h1{font-size:18px;font-weight:600;letter-spacing:.5px}
+  .header span{font-size:12px;opacity:.7;margin-left:auto}
+  .wrap{padding:16px 20px}
+  .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+  .card{background:#fff;border-radius:8px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .card-label{font-size:11px;color:#888;margin-bottom:4px}
+  .card-val{font-size:20px;font-weight:600;color:#1a3a5c}
+  .card-sub{font-size:11px;color:#aaa;margin-top:2px}
+  .mode-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .mode-badge{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600}
+  .mode-view{background:#d4edda;color:#155724}
+  .mode-edit{background:#fff3cd;color:#856404}
+  .hint{font-size:11px;color:#888}
+  .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+  .toolbar select,.toolbar input{font-size:12px;padding:5px 9px;border-radius:6px;border:1px solid #d0d7e2;background:#fff;color:#222;height:32px}
+  .toolbar input{flex:1;min-width:150px}
+  .btn{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid #d0d7e2;background:#fff;color:#222;cursor:pointer;height:32px;display:inline-flex;align-items:center;gap:5px;font-weight:500}
+  .btn:hover{background:#f0f4fa}
+  .btn-edit{border-color:#1a3a5c;color:#1a3a5c}
+  .btn-add{border-color:#1a7a4a;color:#1a7a4a}
+  .tbl-wrap{overflow-x:auto;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  table{width:100%;border-collapse:collapse;background:#fff;font-size:12px;table-layout:fixed}
+  th{background:#1a3a5c;color:#e8edf5;font-weight:500;padding:9px 8px;text-align:left;white-space:nowrap;font-size:11px}
+  th:first-child{border-radius:8px 0 0 0}
+  th:last-child{border-radius:0 8px 0 0}
+  td{padding:7px 8px;border-bottom:1px solid #eef1f6;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#f8fafd}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;white-space:nowrap}
+  .bank-QNB{background:#dbeafe;color:#1e40af}
+  .bank-NBE{background:#dcfce7;color:#166534}
+  .bank-ATJ{background:#fef9c3;color:#854d0e}
+  .s-W{background:#dbeafe;color:#1e40af}
+  .s-B{background:#fef9c3;color:#854d0e}
+  .s-O{background:#dcfce7;color:#166534}
+  .s-SB{background:#f3e8ff;color:#6b21a8}
+  .s-SO{background:#fee2e2;color:#991b1b}
+  .s-N{background:#f1f5f9;color:#475569}
+  .c-RELAN{background:#e0f2fe;color:#0369a1}
+  .c-MAHABA{background:#fce7f3;color:#9d174d}
+  .c-BADRY{background:#f0fdf4;color:#166534}
+  .days-ok{color:#16a34a;font-weight:600}
+  .days-warn{color:#d97706;font-weight:600}
+  .days-danger{color:#dc2626;font-weight:600}
+  .days-neg{color:#94a3b8}
+  .edit-cell input,.edit-cell select,.edit-cell textarea{width:100%;font-size:11px;padding:3px 5px;border-radius:4px;border:1px solid #c7d2e0;background:#fffef8;color:#222;font-family:inherit}
+  .edit-cell textarea{height:48px;resize:vertical}
+  .icon-btn{border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:15px;padding:3px 5px;border-radius:4px}
+  .icon-btn:hover{background:#f1f5f9;color:#334155}
+  .icon-btn.del:hover{color:#dc2626;background:#fee2e2}
+  .icon-btn.save:hover{color:#166534;background:#dcfce7}
+  .empty{text-align:center;padding:2rem;color:#94a3b8}
+  .sub-text{font-size:10px;color:#94a3b8;margin-top:1px}
+  .footer{text-align:center;padding:14px;color:#aaa;font-size:11px}
+  @media print{.toolbar,.mode-bar,.btn{display:none!important}}
+
+  /* ── additions only: spinner, toast, saving indicator ── */
+  #spinnerOverlay{
+    display:none;position:fixed;inset:0;background:rgba(255,255,255,.55);
+    z-index:9000;align-items:center;justify-content:center
+  }
+  #spinnerOverlay.active{display:flex}
+  .spinner{width:38px;height:38px;border:4px solid #d0d7e2;
+    border-top-color:#1a3a5c;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  #toastContainer{
+    position:fixed;bottom:24px;right:24px;z-index:9100;
+    display:flex;flex-direction:column;gap:8px;pointer-events:none
+  }
+  .toast{
+    padding:9px 16px;border-radius:7px;font-size:12px;font-weight:500;
+    color:#fff;opacity:0;transform:translateY(8px);
+    transition:opacity .25s,transform .25s;pointer-events:none;
+    max-width:320px;box-shadow:0 2px 8px rgba(0,0,0,.18)
+  }
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{background:#166534}
+  .toast.error{background:#991b1b}
+  .toast.info{background:#1a3a5c}
+
+  #savingDot{
+    display:none;width:8px;height:8px;border-radius:50%;
+    background:#d97706;margin-left:6px;animation:pulse 1s infinite
+  }
+  #savingDot.active{display:inline-block}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  #refreshInfo{font-size:10px;color:#aaa;margin-left:4px}
+</style>
+</head>
+<body>
+
+<!-- Spinner -->
+<div id="spinnerOverlay"><div class="spinner"></div></div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<div class="header">
+  <h1>📦 Clearance Tracker</h1>
+  <span id="headerInfo">Loading...</span>
+</div>
+
+<div class="wrap">
+  <div class="summary" id="summary"></div>
+
+  <div class="mode-bar">
+    <span class="mode-badge mode-view" id="modeBadge">View Mode</span>
+    <span class="hint" id="modeHint">اضغط Edit Mode لتفعيل التعديل</span>
+    <span id="savingDot" title="جاري الحفظ..."></span>
+    <span style="margin-left:auto;font-size:11px;color:#aaa" id="countInfo"></span>
+    <span id="refreshInfo"></span>
+  </div>
+
+  <div class="toolbar">
+    <select id="fBank"><option value="">كل البنوك</option><option>QNB</option><option>NBE</option><option>ATJ</option></select>
+    <select id="fStatus"><option value="">كل الحالات</option><option value="W">W — جاري</option><option value="B">B — انتظار</option><option value="O">O — تم تخزين</option><option value="S-B">S-B</option><option value="S-O">S-O</option><option value="N">N — جديد</option></select>
+    <select id="fSupplier"><option value="">كل الموردين</option><option>Zaurak</option><option>Navigator</option></select>
+    <select id="fClearer"><option value="">كل الـ Clearers</option><option>RELAN</option><option>MAHABA</option><option>El Badry</option></select>
+    <input id="fSearch" type="text" placeholder="بحث BL / عميل / بضاعة / Ref..."/>
+    <button class="btn btn-edit" id="btnToggleEdit" onclick="toggleEdit()">✏️ Edit Mode</button>
+    <button class="btn btn-add" id="btnAdd" style="display:none" onclick="addRow()">+ شحنة جديدة</button>
+    <button class="btn" onclick="window.print()">🖨️ Print</button>
+    <button class="btn" onclick="loadData(true)" title="تحديث يدوي">🔄 Refresh</button>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <colgroup>
+        <col style="width:115px"><col style="width:130px"><col style="width:100px"><col style="width:55px">
+        <col style="width:50px"><col style="width:88px"><col style="width:52px"><col style="width:55px">
+        <col style="width:55px"><col style="width:44px"><col style="width:44px"><col style="width:185px"><col style="width:72px"><col style="width:68px">
+      </colgroup>
+      <thead><tr>
+        <th>BL No. / Ref</th><th>بضاعة</th><th>عميل / مورد</th><th>بنك</th>
+        <th>حاويات</th><th>مبلغ $</th><th>ETA</th><th>تخزين</th>
+        <th>وصل</th><th>أيام</th><th>حالة</th><th>Clearer</th><th>ملاحظات</th><th>⚙️</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">UPI Clearance Tracker — <span id="today"></span></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG — paste your deployed Apps Script URL here
+// ════════════════════════════════════════════════════════════
+const API_URL = '/.netlify/functions/proxy';
+
+const AUTO_REFRESH_INTERVAL = 30000; // 30 seconds
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let rows      = [];
+let editMode  = false;
+let nextId    = Date.now();           // base for new IDs (ms timestamp)
+let saveTimer = null;                 // debounce handle
+let refreshCountdown = AUTO_REFRESH_INTERVAL / 1000;
+let refreshInterval  = null;
+
+document.getElementById('today').textContent = new Date().toLocaleDateString('en-GB');
+
+// ════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════════════════════
+function showSpinner()  { document.getElementById('spinnerOverlay').classList.add('active') }
+function hideSpinner()  { document.getElementById('spinnerOverlay').classList.remove('active') }
+function showSaving()   { document.getElementById('savingDot').classList.add('active') }
+function hideSaving()   { document.getElementById('savingDot').classList.remove('active') }
+
+function toast(msg, type = 'info', duration = 3000) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('show'));
+  });
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+// ════════════════════════════════════════════════════════════
+//  API LAYER
+//  كل الـ requests بتروح للـ Netlify Function (proxy)
+//  اللي بتبعتها لـ GAS من الـ server = مفيش CORS
+//  API_URL هنا = الـ Netlify Function مش GAS مباشرة
+// ════════════════════════════════════════════════════════════
+
+async function apiGetAll() {
+  const res = await fetch(API_URL, { method: 'GET' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  if (Array.isArray(json)) return json;
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+async function gasPost(body) {
+  const res = await fetch(API_URL, {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  if (json && json.error) throw new Error(json.error);
+  return json;
+}
+
+async function apiCreate(row) {
+  await gasPost({ action: 'create', row });
+}
+
+async function apiUpdate(row) {
+  await gasPost({ action: 'update', row });
+}
+
+async function apiDelete(id) {
+  await gasPost({ action: 'delete', id: String(id) });
+}
+
+// ════════════════════════════════════════════════════════════
+//  VALIDATION
+// ════════════════════════════════════════════════════════════
+function validateRow(r) {
+  const errors = [];
+  if (!r.bl  || !r.bl.trim())     errors.push('BL No. مطلوب');
+  if (!r.goods || !r.goods.trim())errors.push('البضاعة مطلوبة');
+  if (!r.client|| !r.client.trim())errors.push('العميل مطلوب');
+  if (!r.bank)                    errors.push('البنك مطلوب');
+  if (isNaN(parseFloat(r.amount)))errors.push('المبلغ يجب أن يكون رقمًا');
+  return errors;
+}
+
+// ════════════════════════════════════════════════════════════
+//  DUPLICATE ID GUARD
+// ════════════════════════════════════════════════════════════
+function uniqueId() {
+  let id = String(Date.now());
+  const existing = new Set(rows.map(r => String(r.id)));
+  while (existing.has(id)) id = String(Number(id) + 1);
+  return id;
+}
+
+// ════════════════════════════════════════════════════════════
+//  LOAD DATA
+// ════════════════════════════════════════════════════════════
+async function loadData(manual = false) {
+  if (manual) showSpinner();
+  try {
+    const data = await apiGetAll();
+    if (Array.isArray(data)) {
+      rows = data.map(r => ({
+        ...r,
+        amount : parseFloat(r.amount) || 0,
+        days   : parseInt(r.days)     || 0,
+      }));
+      render();
+      if (manual) toast('تم تحديث البيانات ✓', 'success');
+    }
+  } catch (err) {
+    toast('خطأ في تحميل البيانات: ' + err.message, 'error', 5000);
+    console.error('loadData error', err);
+  } finally {
+    if (manual) hideSpinner();
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  AUTO REFRESH
+// ════════════════════════════════════════════════════════════
+function startAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshCountdown = AUTO_REFRESH_INTERVAL / 1000;
+
+  refreshInterval = setInterval(async () => {
+    refreshCountdown--;
+    document.getElementById('refreshInfo').textContent = `🔁 ${refreshCountdown}s`;
+    if (refreshCountdown <= 0) {
+      refreshCountdown = AUTO_REFRESH_INTERVAL / 1000;
+      await loadData(false);
+    }
+  }, 1000);
+}
+
+// ════════════════════════════════════════════════════════════
+//  FIELD UPDATE  (debounced → auto-save)
+// ════════════════════════════════════════════════════════════
+function updateField(id, field, val) {
+  const r = rows.find(x => String(x.id) === String(id));
+  if (!r) return;
+
+  if (field === 'amount') r[field] = parseFloat(val) || 0;
+  else if (field === 'days') r[field] = parseInt(val) || 0;
+  else r[field] = val;
+
+  updateSummary(getFiltered());
+
+  // debounce: wait 600 ms after last keystroke then save
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => persistUpdate(r), 600);
+}
+
+async function persistUpdate(r) {
+  showSaving();
+  try {
+    await apiUpdate(r);
+    hideSaving();
+  } catch (err) {
+    hideSaving();
+    toast('خطأ في الحفظ: ' + err.message, 'error', 5000);
+    console.error('persistUpdate error', err);
+  }
+}
+
+// Manual save button
+async function manualSave(id) {
+  const r = rows.find(x => String(x.id) === String(id));
+  if (!r) return;
+  clearTimeout(saveTimer); // cancel any pending debounce
+  const btn = document.querySelector(`button.save[onclick*="${id}"]`);
+  if (btn) { btn.textContent = "⏳"; btn.disabled = true; }
+  showSaving();
+  try {
+    await apiUpdate(r);
+    hideSaving();
+    toast("تم الحفظ ✓", "success");
+  } catch (err) {
+    hideSaving();
+    toast("خطأ في الحفظ: " + err.message, "error", 5000);
+  } finally {
+    if (btn) { btn.textContent = "💾"; btn.disabled = false; }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  DELETE
+// ════════════════════════════════════════════════════════════
+async function deleteRow(id) {
+  if (!confirm('تأكيد حذف الشحنة؟ لا يمكن التراجع.')) return;
+  showSpinner();
+  try {
+    await apiDelete(id);
+    rows = rows.filter(r => String(r.id) !== String(id));
+    render();
+    toast('تم حذف الشحنة ✓', 'success');
+  } catch (err) {
+    toast('خطأ في الحذف: ' + err.message, 'error', 5000);
+    console.error('deleteRow error', err);
+  } finally {
+    hideSpinner();
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  ADD ROW
+// ════════════════════════════════════════════════════════════
+async function addRow() {
+  const newRow = {
+    id      : uniqueId(),
+    bl      : 'BL-NEW',
+    ref     : '',
+    goods   : '',
+    supplier: 'Navigator',
+    client  : '',
+    bank    : 'NBE',
+    amount  : 0,
+    cntr    : '1x40',
+    eta     : '',
+    storage : '',
+    rcvd    : '',
+    days    : 0,
+    status  : 'N',
+    clearer : '',
+    comment : ''
+  };
+
+  showSpinner();
+  try {
+    await apiCreate(newRow);
+    rows.push(newRow);
+    render();
+    toast('تمت إضافة شحنة جديدة ✓', 'success');
+    document.getElementById('tbody').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    toast('خطأ في الإضافة: ' + err.message, 'error', 5000);
+    console.error('addRow error', err);
+  } finally {
+    hideSpinner();
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOGGLE EDIT MODE
+// ════════════════════════════════════════════════════════════
+function toggleEdit() {
+  editMode = !editMode;
+  const badge = document.getElementById('modeBadge');
+  const btn   = document.getElementById('btnToggleEdit');
+  if (editMode) {
+    badge.textContent = 'Edit Mode';
+    badge.className   = 'mode-badge mode-edit';
+    btn.textContent   = '👁 View Mode';
+    document.getElementById('modeHint').textContent = 'عدّل أي خلية — يتحفظ تلقائيًا في Google Sheets';
+    document.getElementById('btnAdd').style.display = '';
+  } else {
+    badge.textContent = 'View Mode';
+    badge.className   = 'mode-badge mode-view';
+    btn.textContent   = '✏️ Edit Mode';
+    document.getElementById('modeHint').textContent = 'اضغط Edit Mode لتفعيل التعديل';
+    document.getElementById('btnAdd').style.display = 'none';
+  }
+  render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  FILTER
+// ════════════════════════════════════════════════════════════
+function getFiltered() {
+  const bank     = document.getElementById('fBank').value;
+  const status   = document.getElementById('fStatus').value;
+  const supplier = document.getElementById('fSupplier').value;
+  const clearer  = document.getElementById('fClearer').value;
+  const q        = document.getElementById('fSearch').value.toLowerCase();
+  return rows.filter(r => {
+    if (bank     && r.bank     !== bank)     return false;
+    if (status   && r.status   !== status)   return false;
+    if (supplier && r.supplier !== supplier) return false;
+    if (clearer  && r.clearer  !== clearer)  return false;
+    if (q && !(
+      r.bl.toLowerCase().includes(q)    ||
+      r.goods.toLowerCase().includes(q) ||
+      r.client.toLowerCase().includes(q)||
+      r.ref.toLowerCase().includes(q)
+    )) return false;
+    return true;
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER HELPERS (unchanged logic, same CSS classes)
+// ════════════════════════════════════════════════════════════
+function fmtAmt(v) { return '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }) }
+function bankCls(b) { return b === 'QNB' ? 'bank-QNB' : b === 'NBE' ? 'bank-NBE' : b === 'ATJ' ? 'bank-ATJ' : 'bank-QNB' }
+function statusCls(s) { return s === 'W' ? 's-W' : s === 'B' ? 's-B' : s === 'O' ? 's-O' : s === 'S-B' ? 's-SB' : s === 'S-O' ? 's-SO' : 's-N' }
+function daysCls(d) { d = Number(d); if (d <= 0) return 'days-neg'; if (d > 10) return 'days-danger'; if (d > 4) return 'days-warn'; return 'days-ok' }
+function statusOpts(cur) { return ['W','B','O','S-B','S-O','N'].map(s => `<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('') }
+function bankOpts(cur)   { return ['QNB','NBE','ATJ'].map(b => `<option${b===cur?' selected':''}>${b}</option>`).join('') }
+function suppOpts(cur)   { return ['Zaurak','Navigator'].map(s => `<option${s===cur?' selected':''}>${s}</option>`).join('') }
+function clearerOpts(cur) { return ['','RELAN','MAHABA','El Badry'].map(c => `<option value="${c}"${c===cur?' selected':''}>${c||'—'}</option>`).join('') }
+
+// Parse any date format → YYYY-MM-DD for <input type="date">
+function fmtDateInput(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  if (isNaN(d)) return '';
+  return d.toISOString().slice(0, 10);
+}
+// Display date as dd/mm/yyyy
+function fmtDateDisplay(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function viewRow(r) {
+  const d = Number(r.days);
+  return `
+    <td><div style="font-weight:600;font-size:11px">${r.bl}</div><div class="sub-text">${r.ref}</div></td>
+    <td>${r.goods}</td>
+    <td><div>${r.client}</div><div class="sub-text">${r.supplier}</div></td>
+    <td><span class="badge ${bankCls(r.bank)}">${r.bank}</span></td>
+    <td>${r.cntr}</td>
+    <td style="font-weight:600">${fmtAmt(r.amount)}</td>
+    <td>${fmtDateDisplay(r.eta)}</td>
+    <td style="font-size:11px">${r.storage||'—'}</td>
+    <td style="font-size:11px">${r.rcvd||'—'}</td>
+    <td class="${daysCls(d)}">${d>0?d+'d':'—'}</td>
+    <td><span class="badge ${statusCls(r.status)}">${r.status}</span></td>
+    <td><span class="badge ${r.clearer==='RELAN'?'c-RELAN':r.clearer==='MAHABA'?'c-MAHABA':r.clearer==='El Badry'?'c-BADRY':'s-N'}">${r.clearer||'—'}</span></td>
+    <td style="color:#666;font-size:11px">${r.comment||'—'}</td>
+    <td><button class="icon-btn" onclick="toggleEdit()" title="تعديل">✏️</button></td>`;
+}
+
+function editRow(r) {
+  const id = r.id;
+  return `
+    <td class="edit-cell">
+      <input value="${esc(r.bl)}"    onchange="updateField('${id}','bl',this.value)"    style="margin-bottom:2px"/>
+      <input value="${esc(r.ref)}"   onchange="updateField('${id}','ref',this.value)"   placeholder="Ref..."/>
+    </td>
+    <td class="edit-cell"><input value="${esc(r.goods)}"   onchange="updateField('${id}','goods',this.value)"/></td>
+    <td class="edit-cell">
+      <input value="${esc(r.client)}" onchange="updateField('${id}','client',this.value)" style="margin-bottom:2px"/>
+      <select onchange="updateField('${id}','supplier',this.value)">${suppOpts(r.supplier)}</select>
+    </td>
+    <td class="edit-cell"><select onchange="updateField('${id}','bank',this.value)">${bankOpts(r.bank)}</select></td>
+    <td class="edit-cell"><input value="${esc(r.cntr)}"    onchange="updateField('${id}','cntr',this.value)"/></td>
+    <td class="edit-cell"><input type="number" value="${r.amount}" onchange="updateField('${id}','amount',this.value)" step="0.01"/></td>
+    <td class="edit-cell"><input type="date" value="${fmtDateInput(r.eta)}" onchange="updateField('${id}','eta',this.value)"/></td>
+    <td class="edit-cell"><input value="${esc(r.storage)}" onchange="updateField('${id}','storage',this.value)"/></td>
+    <td class="edit-cell"><input value="${esc(r.rcvd)}"    onchange="updateField('${id}','rcvd',this.value)"/></td>
+    <td class="edit-cell"><input type="number" value="${r.days}" onchange="updateField('${id}','days',this.value)"/></td>
+    <td class="edit-cell"><select onchange="updateField('${id}','status',this.value)">${statusOpts(r.status)}</select></td>
+    <td class="edit-cell"><select onchange="updateField('${id}','clearer',this.value)">${clearerOpts(r.clearer||'')}</select></td>
+    <td class="edit-cell"><textarea onchange="updateField('${id}','comment',this.value)">${esc(r.comment)}</textarea></td>
+    <td style="white-space:nowrap"><button class="icon-btn save" onclick="manualSave('${id}')" title="حفظ">💾</button><button class="icon-btn del" onclick="deleteRow('${id}')" title="حذف">🗑</button></td>`;
+}
+
+// XSS escape
+function esc(v) {
+  return String(v || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ════════════════════════════════════════════════════════════
+//  SUMMARY CARDS (unchanged logic)
+// ════════════════════════════════════════════════════════════
+function updateSummary(filtered) {
+  const total  = filtered.reduce((s,r) => s + Number(r.amount), 0);
+  const byBank = { QNB:0, NBE:0, ATJ:0 };
+  filtered.forEach(r => { if (byBank[r.bank] !== undefined) byBank[r.bank] += Number(r.amount) });
+  const inPort = filtered.filter(r => Number(r.days) > 0).length;
+  document.getElementById('summary').innerHTML = `
+    <div class="card"><div class="card-label">إجمالي المبالغ</div><div class="card-val">${fmtAmt(total)}</div><div class="card-sub">${filtered.length} شحنة</div></div>
+    <div class="card"><div class="card-label">QNB — Zaurak</div><div class="card-val">${fmtAmt(byBank.QNB)}</div><div class="card-sub">${filtered.filter(r=>r.bank==='QNB').length} شحنة</div></div>
+    <div class="card"><div class="card-label">NBE — Navigator</div><div class="card-val">${fmtAmt(byBank.NBE)}</div><div class="card-sub">${filtered.filter(r=>r.bank==='NBE').length} شحنة</div></div>
+    <div class="card"><div class="card-label">ATJ</div><div class="card-val">${fmtAmt(byBank.ATJ)}</div><div class="card-sub">${filtered.filter(r=>r.bank==='ATJ').length} شحنة</div></div>
+    <div class="card"><div class="card-label">في الميناء</div><div class="card-val" style="color:#dc2626">${inPort}</div><div class="card-sub">شحنة نشطة</div></div>`;
+  document.getElementById('headerInfo').textContent = `${filtered.length} شحنة — إجمالي ${fmtAmt(total)}`;
+  document.getElementById('countInfo').textContent  = `عرض ${filtered.length} من ${rows.length}`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+function render() {
+  const filtered = getFiltered();
+  updateSummary(filtered);
+  const tbody = document.getElementById('tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="13" class="empty">لا توجد نتائج</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `<tr>${editMode ? editRow(r) : viewRow(r)}</tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ════════════════════════════════════════════════════════════
+document.getElementById('fBank').addEventListener('change', render);
+document.getElementById('fStatus').addEventListener('change', render);
+document.getElementById('fSupplier').addEventListener('change', render);
+document.getElementById('fSearch').addEventListener('input', render);
+document.getElementById('fClearer').addEventListener('change', render);
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+(async () => {
+  showSpinner();
+  await loadData(false);
+  hideSpinner();
+  startAutoRefresh();
+})();
+</script>
+</body>
+</html>
