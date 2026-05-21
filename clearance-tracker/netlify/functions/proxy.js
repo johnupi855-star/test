@@ -4,7 +4,7 @@
 // من الـ server side = مفيش CORS
 // ============================================================
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby9kLX5Hrn7bN4NHJGALame1jlk7h-Y6qv_FZapNa3D5oirmRyU0wZWkF88tld3NXkc/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwOt_wxvDgDhEaHtvebNQIMa_b1Q03XOYztILAvPbfOT8j1H9aOUmy4rr3XqNeyCij3/exec';
 
 exports.handler = async (event) => {
   const headers = {
